@@ -10,7 +10,7 @@ intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-# 保存用辞書 {user_id: [{"time": datetime, "title": str, "channel": channel}, ...]}
+# 保存用辞書 {user_id: [{"time": datetime, "title": str, "channel": int}, ...]}
 reminders = {}
 pending_inputs = {}  # 一時入力状態管理 {user_id: {step, time, channel}}
 
@@ -79,7 +79,7 @@ async def on_message(message):
             reminder = {
                 "time": state["time"],
                 "title": title,
-                "channel": str(message.channel.id),
+                "channel": message.channel.id,
             }
             reminders.setdefault(user_id, []).append(reminder)
 
@@ -96,14 +96,12 @@ async def check_reminders():
     now = datetime.now()
     for user_id, reminder_list in list(reminders.items()):
         for r in reminder_list[:]:
-            if now >= r["time"]:
-                channel_id = int(r["channel"])
-                channel = bot.get_channel(channel_id)
+            time_diff = (r["time"] - now).total_seconds()
+            if 0 <= time_diff < 60:
+                channel = bot.get_channel(r["channel"])
                 user_mention = f"<@{user_id}>"
-
                 if channel:
                     await channel.send(f"{user_mention} さんにリマインド 🔔 『{r['title']}』の時間になりました。")
-
                 reminder_list.remove(r)
 
 @bot.command(name="remhelp")
