@@ -74,7 +74,8 @@ async def on_message(message):
                 await message.channel.send("リマインドのタイトルを入力してください。")
             except ValueError:
                 await message.channel.send("❌ 正しい形式で日時を入力してください（例: 202504141600）")
-         elif state["step"] == "waiting_title":
+
+        elif state["step"] == "waiting_title":
             title = message.content.strip()
             reminder = {
                 "time": state["time"],
@@ -89,25 +90,9 @@ async def on_message(message):
                 f"✅ リマインドを登録しました：\n📅 日時：**{time_str}**\n📝 タイトル：『{title}』"
             )
 
-    del pending_inputs[user_id]
-    return
-       elif state["step"] == "waiting_title":
-    title = message.content.strip()
-    reminder = {
-        "time": state["time"],
-        "title": title,
-        "channel": str(message.channel.id),
-    }
-    reminders.setdefault(user_id, []).append(reminder)
+            del pending_inputs[user_id]
+            return
 
-    # ✅ 登録完了メッセージに日時とタイトルを含める
-    time_str = state["time"].strftime("%Y年%m月%d日 %H:%M")
-    await message.channel.send(
-        f"✅ リマインドを登録しました：\n📅 日時：**{time_str}**\n📝 タイトル：『{title}』"
-    )
-
-    del pending_inputs[user_id]
-    return
 elif state["step"] == "waiting_title":
         title = message.content.strip()
         reminder = {
@@ -125,8 +110,6 @@ elif state["step"] == "waiting_title":
 
         del pending_inputs[user_id]
         return
-
-
 
 async def get_user_voice_channel(user_id):
     for guild in bot.guilds:
