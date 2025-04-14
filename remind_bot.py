@@ -68,18 +68,21 @@ async def on_message(message):
                 state["step"] = "waiting_title"
                 await message.channel.send("リマインドのタイトルを入力してください。")
             except ValueError:
-                await message.channel.send("正しい形式で日時を入力してください（例: 202504141600）")
+                await message.channel.send("❌ 正しい形式で日時を入力してください（例: 202504141600）")
         elif state["step"] == "waiting_title":
             title = message.content.strip()
             reminder = {
                 "time": state["time"],
                 "title": title,
-                "channel": state["channel"],
+                "channel": str(message.channel.id),
             }
             reminders.setdefault(user_id, []).append(reminder)
             await message.channel.send(f"✅ リマインドを登録しました：『{title}』")
             del pending_inputs[user_id]
+        return  # ← これが **重要**（コマンド処理を回避）
+
     await bot.process_commands(message)
+
 
 async def get_user_voice_channel(user_id):
     for guild in bot.guilds:
@@ -94,11 +97,15 @@ async def check_reminders():
     for user_id, reminder_list in list(reminders.items()):
         for r in reminder_list[:]:
             if now >= r["time"]:
-                channel = r["channel"]
+                # テキストチャンネルに通知
+                channel_id = int(r["channel"])
+                channel = bot.get_channel(channel_id)
                 user_mention = f"<@{user_id}>"
-                await channel.send(f"{user_mention} さんにリマインド 🔔 『{r['title']}』の時間になりました。")
 
-                # 音声再生（ボイスチャンネルに参加していれば）
+                if channel:
+                    await channel.send(f"{user_mention} さんにリマインド 🔔 『{r['title']}』の時間になりました。")
+
+                # ボイスチャンネルに参加して音を流す
                 voice_channel = await get_user_voice_channel(user_id)
                 if voice_channel:
                     try:
@@ -110,7 +117,9 @@ async def check_reminders():
                     except Exception as e:
                         print(f"音声再生エラー: {e}")
 
+                # リマインド削除
                 reminder_list.remove(r)
+
 
 @bot.command(name="remhelp")
 async def remhelp_command(ctx):
@@ -123,6 +132,27 @@ async def remhelp_command(ctx):
         "`!remhelp`：このコマンド一覧を表示します。\n"
     )
     await ctx.send(help_text)
+
+@bot.command(name="remjoin")
+async def remjoin(ctx):
+    if ctx.author.voice:
+        channel = ctx.author.voice.channel
+        if ctx.voice_client is None:
+            await channel.connect()
+            await ctx.send(f"🔔 ボイスチャンネル「{channel.name}」に接続しました。")
+        else:
+            await ctx.send("✅ すでにボイスチャンネルに参加しています。")
+    else:
+        await ctx.send("❌ あなたは現在ボイスチャンネルに参加していません。")
+
+@bot.command(name="remleave")
+async def remleave(ctx):
+    if ctx.voice_client is not None:
+        await ctx.voice_client.disconnect()
+        await ctx.send("👋 ボイスチャンネルから切断しました。")
+    else:
+        await ctx.send("❌ 現在ボイスチャンネルに参加していません。")
+
 
 # 起動処理
 load_dotenv()
