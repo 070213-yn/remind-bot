@@ -53,9 +53,14 @@ async def remlis(ctx):
     except asyncio.TimeoutError:
         await ctx.send("削除時間が過ぎたためキャンセルしました。")
 
-@bot.event
+@@bot.event
 async def on_message(message):
     if message.author.bot:
+        return
+
+    # ✅ コマンド処理だけ通す（2重送信防止）
+    if message.content.startswith("!"):
+        await bot.process_commands(message)
         return
 
     user_id = message.author.id
@@ -70,18 +75,23 @@ async def on_message(message):
             except ValueError:
                 await message.channel.send("❌ 正しい形式で日時を入力してください（例: 202504141600）")
         elif state["step"] == "waiting_title":
-            title = message.content.strip()
-            reminder = {
-                "time": state["time"],
-                "title": title,
-                "channel": str(message.channel.id),
-            }
-            reminders.setdefault(user_id, []).append(reminder)
-            await message.channel.send(f"✅ リマインドを登録しました：『{title}』")
-            del pending_inputs[user_id]
-        return  # ← これが **重要**（コマンド処理を回避）
+        title = message.content.strip()
+        reminder = {
+            "time": state["time"],
+            "title": title,
+            "channel": str(message.channel.id),
+        }
+        reminders.setdefault(user_id, []).append(reminder)
 
-    await bot.process_commands(message)
+        # ✅ 登録完了メッセージに日時とタイトルを含める
+        time_str = state["time"].strftime("%Y年%m月%d日 %H:%M")
+        await message.channel.send(
+            f"✅ リマインドを登録しました：\n📅 日時：**{time_str}**\n📝 タイトル：『{title}』"
+        )
+
+        del pending_inputs[user_id]
+        return
+
 
 
 async def get_user_voice_channel(user_id):
@@ -105,18 +115,6 @@ async def check_reminders():
                 if channel:
                     await channel.send(f"{user_mention} さんにリマインド 🔔 『{r['title']}』の時間になりました。")
 
-                # ボイスチャンネルに参加して音を流す
-                voice_channel = await get_user_voice_channel(user_id)
-                if voice_channel:
-                    try:
-                        vc = await voice_channel.connect()
-                        vc.play(FFmpegPCMAudio("remind.mp3"))
-                        while vc.is_playing():
-                            await asyncio.sleep(1)
-                        await vc.disconnect()
-                    except Exception as e:
-                        print(f"音声再生エラー: {e}")
-
                 # リマインド削除
                 reminder_list.remove(r)
 
@@ -132,26 +130,6 @@ async def remhelp_command(ctx):
         "`!remhelp`：このコマンド一覧を表示します。\n"
     )
     await ctx.send(help_text)
-
-@bot.command(name="remjoin")
-async def remjoin(ctx):
-    if ctx.author.voice:
-        channel = ctx.author.voice.channel
-        if ctx.voice_client is None:
-            await channel.connect()
-            await ctx.send(f"🔔 ボイスチャンネル「{channel.name}」に接続しました。")
-        else:
-            await ctx.send("✅ すでにボイスチャンネルに参加しています。")
-    else:
-        await ctx.send("❌ あなたは現在ボイスチャンネルに参加していません。")
-
-@bot.command(name="remleave")
-async def remleave(ctx):
-    if ctx.voice_client is not None:
-        await ctx.voice_client.disconnect()
-        await ctx.send("👋 ボイスチャンネルから切断しました。")
-    else:
-        await ctx.send("❌ 現在ボイスチャンネルに参加していません。")
 
 
 # 起動処理
