@@ -74,7 +74,6 @@ async def on_message(message):
                 await message.channel.send("リマインドのタイトルを入力してください。")
             except ValueError:
                 await message.channel.send("❌ 正しい形式で日時を入力してください（例: 202504141600）")
-
         elif state["step"] == "waiting_title":
             title = message.content.strip()
             reminder = {
@@ -84,7 +83,6 @@ async def on_message(message):
             }
             reminders.setdefault(user_id, []).append(reminder)
 
-            # ✅ 登録完了メッセージに日時とタイトルを含める
             time_str = state["time"].strftime("%Y年%m月%d日 %H:%M")
             await message.channel.send(
                 f"✅ リマインドを登録しました：\n📅 日時：**{time_str}**\n📝 タイトル：『{title}』"
@@ -93,38 +91,12 @@ async def on_message(message):
             del pending_inputs[user_id]
             return
 
-elif state["step"] == "waiting_title":
-        title = message.content.strip()
-        reminder = {
-            "time": state["time"],
-            "title": title,
-            "channel": str(message.channel.id),
-        }
-        reminders.setdefault(user_id, []).append(reminder)
-
-        # ✅ 登録完了メッセージに日時とタイトルを含める
-        time_str = state["time"].strftime("%Y年%m月%d日 %H:%M")
-        await message.channel.send(
-            f"✅ リマインドを登録しました：\n📅 日時：**{time_str}**\n📝 タイトル：『{title}』"
-        )
-
-        del pending_inputs[user_id]
-        return
-
-async def get_user_voice_channel(user_id):
-    for guild in bot.guilds:
-        member = guild.get_member(user_id)
-        if member and member.voice:
-            return member.voice.channel
-    return None
-
 @tasks.loop(seconds=60)
 async def check_reminders():
     now = datetime.now()
     for user_id, reminder_list in list(reminders.items()):
         for r in reminder_list[:]:
             if now >= r["time"]:
-                # テキストチャンネルに通知
                 channel_id = int(r["channel"])
                 channel = bot.get_channel(channel_id)
                 user_mention = f"<@{user_id}>"
@@ -132,9 +104,7 @@ async def check_reminders():
                 if channel:
                     await channel.send(f"{user_mention} さんにリマインド 🔔 『{r['title']}』の時間になりました。")
 
-                # リマインド削除
                 reminder_list.remove(r)
-
 
 @bot.command(name="remhelp")
 async def remhelp_command(ctx):
@@ -147,7 +117,6 @@ async def remhelp_command(ctx):
         "`!remhelp`：このコマンド一覧を表示します。\n"
     )
     await ctx.send(help_text)
-
 
 # 起動処理
 load_dotenv()
