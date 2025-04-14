@@ -96,13 +96,13 @@ async def check_reminders():
     now = datetime.now()
     for user_id, reminder_list in list(reminders.items()):
         for r in reminder_list[:]:
-            time_diff = (r["time"] - now).total_seconds()
-            if 0 <= time_diff < 60:
+            if r["time"] <= now:
                 channel = bot.get_channel(r["channel"])
                 user_mention = f"<@{user_id}>"
                 if channel:
                     await channel.send(f"{user_mention} さんにリマインド 🔔 『{r['title']}』の時間になりました。")
                 reminder_list.remove(r)
+
 
 @bot.command(name="remhelp")
 async def remhelp_command(ctx):
