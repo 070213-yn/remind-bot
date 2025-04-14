@@ -33,7 +33,7 @@ IF %ERRORLEVEL% NEQ 0 (
 )
 
 :: プッシュ
-git push origin main
+git push origin master
 
 echo.
 echo ✅ アップロードが完了しました！
