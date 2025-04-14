@@ -53,7 +53,7 @@ async def remlis(ctx):
     except asyncio.TimeoutError:
         await ctx.send("削除時間が過ぎたためキャンセルしました。")
 
-@@bot.event
+@bot.event
 async def on_message(message):
     if message.author.bot:
         return
