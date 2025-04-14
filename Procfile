@@ -1,0 +1,1 @@
+worker: python remind_bot.py
