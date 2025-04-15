@@ -33,7 +33,7 @@ async def rem(ctx, minutes: int, *, content: str):
         "channel_id": ctx.channel.id
     })
 
-    await ctx.send(f"{minutes}分後に以下のメッセージを返します：\n`{content}`（番号: {reminder_id}）")
+    await ctx.send(f"{minutes}分後に以下の内容をお届けいたします：\n`{content}`（番号: {reminder_id}）")
 
     await asyncio.sleep(minutes * 60)
 
@@ -42,63 +42,68 @@ async def rem(ctx, minutes: int, *, content: str):
         for r in reminders[user_id]:
             if r["id"] == reminder_id:
                 channel = bot.get_channel(r["channel_id"])
-                await channel.send(f"{ctx.author.mention} リマインダー：{r['content']}")
+                await channel.send(f"{ctx.author.mention} お嬢様、リマインダーでございます：{r['content']}")
                 reminders[user_id].remove(r)
                 break
 
 @bot.command()
-async def remd(ctx, datetime_str: str, *, content: str):
+async def rem(ctx, *args):
     user_id = ctx.author.id
     if user_id not in reminders:
         reminders[user_id] = []
 
-    try:
-        # 現在時刻（JST）
-        now = datetime.utcnow() + timedelta(hours=9)
-
-        # 入力を datetime に変換（MMDDHHmm）
-        target = datetime.strptime(datetime_str, "%m%d%H%M")
-        target = target.replace(year=now.year)
-
-        # 入力時刻がすでに過ぎている場合は、翌年扱い
-        if target <= now:
-            target = target.replace(year=now.year + 1)
-
-        seconds = (target - now).total_seconds()
-
-    except Exception as e:
-        await ctx.send("形式が正しくありませんわ。例：`!remd 04151230 メッセージ内容`")
+    if len(args) % 2 != 0:
+        await ctx.send("さぁお嬢様、なにをリマインドされますか？ ")
         return
 
-    reminder_id = len(reminders[user_id]) + 1
+    now = datetime.utcnow() + timedelta(hours=9)
 
-    reminders[user_id].append({
-        "id": reminder_id,
-        "content": content,
-        "time": time.time() + seconds,
-        "channel_id": ctx.channel.id
-    })
+    for i in range(0, len(args), 2):
+        datetime_str = args[i]
+        content = args[i + 1]
 
-    await ctx.send(f"{target.strftime('%Y/%m/%d %H:%M')} に以下のメッセージを返します：\n`{content}`（番号: {reminder_id}）")
+        try:
+            target = datetime.strptime(datetime_str, "%m%d%H%M")
+            target = target.replace(year=now.year)
+            if target <= now:
+                target = target.replace(year=now.year + 1)
+            seconds = (target - now).total_seconds()
+        except Exception:
+            await ctx.send(f"申し訳ございません、`{datetime_str}` は日時として正しく読み取れませんでした。形式をご確認くださいませ。")
+            continue
 
-    await asyncio.sleep(seconds)
+        reminder_id = len(reminders[user_id]) + 1
+        reminders[user_id].append({
+            "id": reminder_id,
+            "content": content,
+            "time": time.time() + seconds,
+            "channel_id": ctx.channel.id
+        })
 
-    if user_id in reminders:
-        for r in reminders[user_id]:
-            if r["id"] == reminder_id:
-                channel = bot.get_channel(r["channel_id"])
-                await channel.send(f"{ctx.author.mention} リマインダー：{r['content']}")
-                reminders[user_id].remove(r)
-                break
+        await ctx.send(f"{target.strftime('%Y/%m/%d %H:%M')} に以下の内容をお届けいたします：\n`{content}`（番号: {reminder_id}）")
+
+        # 各リマインダーは非同期で待機
+        async def wait_and_send(user_id, reminder_id, seconds):
+            await asyncio.sleep(seconds)
+            if user_id in reminders:
+                for r in reminders[user_id]:
+                    if r["id"] == reminder_id:
+                        channel = bot.get_channel(r["channel_id"])
+                        await channel.send(f"{ctx.author.mention} お嬢様、リマインダーでございます：{r['content']}")
+                        reminders[user_id].remove(r)
+                        break
+
+        bot.loop.create_task(wait_and_send(user_id, reminder_id, seconds))
+
 
 @bot.command()
 async def remlis(ctx):
     user_id = ctx.author.id
     if user_id not in reminders or not reminders[user_id]:
-        await ctx.send("現在、リマインダーはありません。")
+        await ctx.send("現在、お嬢様のリマインダーは登録されておりません。")
         return
 
-    msg = "**あなたのリマインダー一覧：**\n"
+    msg = "**お嬢様のリマインダー一覧でございます：**\n"
     for r in reminders[user_id]:
         remaining = int(r["time"] - time.time())
         mins = remaining // 60
@@ -113,9 +118,23 @@ async def remdel(ctx, reminder_id: int):
         for r in reminders[user_id]:
             if r["id"] == reminder_id:
                 reminders[user_id].remove(r)
-                await ctx.send(f"番号 `{reminder_id}` のリマインダーを削除しました。")
+                await ctx.send(f"番号 `{reminder_id}` のリマインダーを削除いたしました。")
                 return
-    await ctx.send("その番号のリマインダーは見つかりませんでした。")
+    await ctx.send("申し訳ございません、その番号のリマインダーは見つかりませんでした。")
+
+@bot.command()
+async def remhelp(ctx):
+    help_text = (
+        "お嬢様、リマインダーBotの使い方をご案内いたします：\n\n"
+        "`!rem [MMDDHHmm] [内容]`\n"
+        "　例：`!rem 04151400 お紅茶の時間`\n\n"
+        "複数同時にご登録いただく場合は、日時とメッセージはペアでご入力くださいませ。\n"
+        "　例：`!rem 04151400 ちょっとメイドと話す 04151500 ドレスの仕立て確認`\n\n"
+        "その他コマンド：\n"
+        "　`!remlis`：現在のリマインダー一覧を表示いたします\n"
+        "　`!remdel [番号]`：指定したリマインダーを削除いたします"
+    )
+    await ctx.send(help_text)
 
 # 起動処理
 load_dotenv()
