@@ -18,35 +18,6 @@ async def on_ready():
     print(f'Logged in as {bot.user.name}')
 
 @bot.command()
-async def rem(ctx, minutes: int, *, content: str):
-    user_id = ctx.author.id
-    if user_id not in reminders:
-        reminders[user_id] = []
-
-    reminder_id = len(reminders[user_id]) + 1
-    trigger_time = time.time() + minutes * 60
-
-    reminders[user_id].append({
-        "id": reminder_id,
-        "content": content,
-        "time": trigger_time,
-        "channel_id": ctx.channel.id
-    })
-
-    await ctx.send(f"{minutes}分後に以下の内容をお届けいたします：\n`{content}`（番号: {reminder_id}）")
-
-    await asyncio.sleep(minutes * 60)
-
-    # 時間経過後、まだリストにあれば送信
-    if user_id in reminders:
-        for r in reminders[user_id]:
-            if r["id"] == reminder_id:
-                channel = bot.get_channel(r["channel_id"])
-                await channel.send(f"{ctx.author.mention} お嬢様、リマインダーでございます：{r['content']}")
-                reminders[user_id].remove(r)
-                break
-
-@bot.command()
 async def rem(ctx, *args):
     user_id = ctx.author.id
     if user_id not in reminders:
