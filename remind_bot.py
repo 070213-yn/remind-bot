@@ -2,6 +2,9 @@
 from discord.ext import commands, tasks
 import asyncio
 import time
+import os
+from dotenv import load_dotenv
+
 
 intents = discord.Intents.default()
 bot = commands.Bot(command_prefix="!", intents=intents)
